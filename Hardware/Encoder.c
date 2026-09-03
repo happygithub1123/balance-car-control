@@ -58,7 +58,7 @@ void Encoder_Init(void)
 	TIM_ICInitStructure.TIM_ICFilter = 0xF;
 	TIM_ICInit(TIM4, &TIM_ICInitStructure);
 	
-	TIM_EncoderInterfaceConfig(TIM4, TIM_EncoderMode_TI12, TIM_ICPolarity_Rising, TIM_ICPolarity_Rising);
+	TIM_EncoderInterfaceConfig(TIM4, TIM_EncoderMode_TI12, TIM_ICPolarity_Falling, TIM_ICPolarity_Rising);
 	
 	TIM_Cmd(TIM4, ENABLE);
 }
@@ -71,12 +71,15 @@ int16_t Encoder_Get(uint8_t n)
 	if (n == 1)
 	{
 		Temp = TIM_GetCounter(TIM3);
+		TIM_SetCounter(TIM3, 0);	//读取后清零
 		return Temp;
 	}
 	else if (n == 2)
 	{
 		Temp = TIM_GetCounter(TIM4);
+		TIM_SetCounter(TIM4, 0);	//读取后清零
 		return Temp;
 	}
+
 	return 0;
 }

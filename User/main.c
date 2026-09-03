@@ -12,7 +12,8 @@
 
 uint8_t keynum = 0;		//按键编号
 int8_t PWML, PWMR;		//左、右电机PWM占空比
-volatile int16_t EncoderCountL, EncoderCountR;
+
+volatile float SpeedL, SpeedR;		//左、右轮速度
 
 int main(void)
 {
@@ -59,8 +60,8 @@ int main(void)
 		/*OLED显示*/
 		OLED_Printf(0, 0, OLED_8X16, "PWML:%+04d", PWML);		//显示左轮的PWM
 		OLED_Printf(0, 16, OLED_8X16, "PWMR:%+04d", PWMR);		//显示右轮的PWM
-		OLED_Printf(0, 32, OLED_8X16, "CntL:%+06d", EncoderCountL);	//显示左编码器累计计数
-		OLED_Printf(0, 48, OLED_8X16, "CntR:%+06d", EncoderCountR);	//显示右编码器累计计数
+		OLED_Printf(0, 32, OLED_8X16, "SpdL:%+06.2f", SpeedL);	//显示左轮的速度
+		OLED_Printf(0, 48, OLED_8X16, "SpdR:%+06.2f", SpeedR);	//显示右轮的速度
 		
 		/*OLED更新*/
 		OLED_Update();
@@ -71,17 +72,13 @@ int main(void)
 
 
 
-
-
-
+//定时器1中断服务函数，每1ms进入一次
 void TIM1_UP_IRQHandler(void)
 {
-    static uint8_t Count = 0;
+    static uint16_t Count = 0;
 
     if (TIM_GetITStatus(TIM1, TIM_IT_Update) == SET)
     {
-        TIM_ClearITPendingBit(TIM1, TIM_IT_Update);
-
         /* 按键仍然每1ms扫描一次 */
         Key_Tick();
 
@@ -92,8 +89,10 @@ void TIM1_UP_IRQHandler(void)
         {
             Count = 0;
 
-            EncoderCountL = Encoder_Get(1);
-            EncoderCountR = Encoder_Get(2);
+            SpeedL = Encoder_Get(1) / 44.0 / 0.05 / 9.27666;	//左轮速度，单位为r/s
+            SpeedR = Encoder_Get(2) / 44.0 / 0.05 / 9.27666;	//右轮速度，单位为r/s
         }
+
+        TIM_ClearITPendingBit(TIM1, TIM_IT_Update);
     }
 }
