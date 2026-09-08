@@ -94,6 +94,10 @@ virtualFolder:
         - path: Hardware/PWM.h
         - path: Hardware/Encoder.c
         - path: Hardware/Encoder.h
+        - path: Hardware/Serial.h
+        - path: Hardware/Serial.c
+        - path: Hardware/BlueSerial.c
+        - path: Hardware/BlueSerial.h
       folders: []
     - name: User
       files:

@@ -8,91 +8,118 @@
 #include "MPU6050.h"
 #include "Motor.h"
 #include "Encoder.h"
+#include "Serial.h"
+#include "BlueSerial.h"
+#include "math.h"
 
 
-uint8_t keynum = 0;		//按键编号
-int8_t PWML, PWMR;		//左、右电机PWM占空比
+/*MPU6050测试*/
+/*下载此段程序后，OLED会显示MPU6050的各项数据*/
+/* MPU6050 原始数据 */
+volatile int16_t AX, AY, AZ, GX, GY, GZ;
 
-volatile float SpeedL, SpeedR;		//左、右轮速度
+/* 姿态角：加速度计角度、陀螺仪预测角度、互补滤波后的最终角度 */
+volatile float AngleAcc;
+volatile float AngleGyro;
+volatile float Angle;
+volatile float GyroY;
+
+/* MPU6050_GYRO_CONFIG = 0x18：量程 ±2000°/s，灵敏度 16.4 LSB/(°/s) */
+#define DT              0.01f
+#define RAD_TO_DEG      57.2957795f
+#define GYRO_SCALE      16.4f
+#define ACC_WEIGHT      0.01f
+
+/* 陀螺仪 Y 轴零偏，需在小车静止时校准，单位为原始 ADC 值 */
+volatile float GyroYOffset = -4.0f;
+uint8_t TimerErrorFlag;
+uint16_t TimerCount;
 
 int main(void)
 {
 	/*模块初始化*/
 	OLED_Init();		//OLED初始化
 	MPU6050_Init();		//MPU6050初始化
-	LED_Init();
-	Key_Init();
-	Motor_Init();
-	Encoder_Init();
+	BlueSerial_Init();	//蓝牙串口初始化
+	Serial_Init();		//串口初始化
 	
 	Timer_Init();		//定时器初始化，1ms定时中断一次
-
-	
 	
 	while (1)
 	{
-		/*按键*/
-		keynum = Key_GetNum();		//按键扫描
-		if (keynum == 1)
-		{
-			PWML += 10;		//按键1按下，左电机PWM占空比设为100
-		}
-		else if (keynum == 2)
-		{
-			PWML -= 10;		//按键2按下，左电机PWM占空比减10
-		}
-		else if (keynum == 3)
-		{
-			PWMR += 10;		//按键3按下，右电机PWM占空比加10
-		}
-		else if (keynum == 4)
-		{
-			PWMR -= 10;		//按键4按下，右电机PWM占空比减10
-		}
-		if (PWML > 100) PWML = 100;	//限制左电机PWM占空比最大为100
-		if (PWML < -100) PWML = -100;		//限制左电机PWM占空比最小为-100
-		if (PWMR > 100) PWMR = 100;	//限制右电机PWM占空比最大为100
-		if (PWMR < -100) PWMR = -100;		//限制右电机PWM占空比最小为-100
-
-		Motor_SetSpeed(1, PWML); 
-		Motor_SetSpeed(2, PWMR);
-
 		/*OLED显示*/
-		OLED_Printf(0, 0, OLED_8X16, "PWML:%+04d", PWML);		//显示左轮的PWM
-		OLED_Printf(0, 16, OLED_8X16, "PWMR:%+04d", PWMR);		//显示右轮的PWM
-		OLED_Printf(0, 32, OLED_8X16, "SpdL:%+06.2f", SpeedL);	//显示左轮的速度
-		OLED_Printf(0, 48, OLED_8X16, "SpdR:%+06.2f", SpeedR);	//显示右轮的速度
+		OLED_Printf(0, 0, OLED_8X16, "%+06d", AX);		//显示AX
+		OLED_Printf(0, 16, OLED_8X16, "%+06d", AY);		//显示AY
+		OLED_Printf(0, 32, OLED_8X16, "%+06d", AZ);		//显示AZ
+		OLED_Printf(64, 0, OLED_8X16, "%+06d", GX);		//显示GX
+		OLED_Printf(64, 16, OLED_8X16, "%+06d", GY);	//显示GY
+		OLED_Printf(64, 32, OLED_8X16, "%+06d", GZ);	//显示GZ
+		OLED_Printf(0, 48, OLED_8X16, "Flag:%1d", TimerErrorFlag);	//显示TimerErrorFlag
+		OLED_Printf(64, 48, OLED_8X16, "C:%05d", TimerCount);		//显示TimerCount
+
+		//Serial_Printf("mpu:%f,%f\n",  AngleAcc, AngleGyro); // 显示MPU6050数据
+		Serial_Printf("mpu:%f,%f,%f\n", AngleAcc, AngleGyro, Angle); // 显示MPU6050数据
+		
+		Delay_ms(20);
+		
 		
 		/*OLED更新*/
 		OLED_Update();
 	}
 }
 
-
-
-
-
-//定时器1中断服务函数，每1ms进入一次
 void TIM1_UP_IRQHandler(void)
 {
-    static uint16_t Count = 0;
+	if (TIM_GetITStatus(TIM1, TIM_IT_Update) == SET)
+	{
+		/*定时中断函数1ms自动执行一次*/
 
-    if (TIM_GetITStatus(TIM1, TIM_IT_Update) == SET)
-    {
-        /* 按键仍然每1ms扫描一次 */
-        Key_Tick();
+		/*进入中断函数后，立刻清标志位*/
+		/*如果中断函数退出前，标志位又置1了，说明中断函数执行时间超过了定时时间（1ms）*/
+		TIM_ClearITPendingBit(TIM1, TIM_IT_Update);
+		
+		/* 每 1 ms 读取一次 MPU6050 原始数据 */
+		MPU6050_GetData(&AX, &AY, &AZ, &GX, &GY, &GZ);
 
-        /* 累计50次，即每50ms计算一次速度 */
-        Count++;
+		/*
+		 * SMPLRT_DIV = 9 时，MPU6050 输出数据约为 100 Hz，
+		 * 即约每 10 ms 更新一次，因此每 10 次中断进行一次姿态融合。
+		 */
+		static uint8_t FusionCount = 0;
+		FusionCount++;
+		if (FusionCount >= 10)
+		{
+			FusionCount = 0;
 
-        if (Count >= 50)
-        {
-            Count = 0;
+			/* 1. 加速度计计算俯仰角 */
+			AngleAcc = -atan2f((float)AX, (float)AZ) * RAD_TO_DEG;
 
-            SpeedL = Encoder_Get(1) / 44.0 / 0.05 / 9.27666;	//左轮速度，单位为r/s
-            SpeedR = Encoder_Get(2) / 44.0 / 0.05 / 9.27666;	//右轮速度，单位为r/s
-        }
+			/* 2. 陀螺仪原始值转换为 °/s，并减去 Y 轴零偏 */
+			GyroY = ((float)GY - GyroYOffset) / GYRO_SCALE;
 
-        TIM_ClearITPendingBit(TIM1, TIM_IT_Update);
-    }
+			/* 3. 从上一次滤波后的角度进行陀螺仪预测 */
+			AngleGyro = Angle + GyroY * DT;
+
+			/*
+			 * 4. 互补滤波：加速度计负责长期校正，
+			 *    陀螺仪负责短期快速变化。
+			 */
+			Angle = ACC_WEIGHT * AngleAcc
+			      + (1.0f - ACC_WEIGHT) * AngleGyro;
+		}
+		
+		/*中断函数退出前，再次检查标志位*/
+		if (TIM_GetITStatus(TIM1, TIM_IT_Update) == SET)
+		{
+			/*标志位又置1了，说明中断函数执行时间超过了定时时间（1ms）*/
+			/*置TimerErrorFlag为1，表示定时中断错误*/
+			TimerErrorFlag = 1;
+
+			/*清标志位，避免中断连续触发，导致主函数完全无法执行*/
+			TIM_ClearITPendingBit(TIM1, TIM_IT_Update);
+		}
+
+		/*中断函数退出前，读取计数器的值，此值可用于测量中断函数的具体执行时间*/
+		TimerCount = TIM_GetCounter(TIM1);
+	}
 }
