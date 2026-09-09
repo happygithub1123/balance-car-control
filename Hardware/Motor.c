@@ -14,38 +14,36 @@ void Motor_Init(void)
 	PWM_Init();
 }
 
-void Motor_SetSpeed(uint8_t n, int8_t Speed)
+void Motor_SetPWM(uint8_t n, int8_t PWM)
 {
-    if (n == 1)
-    {
-        if (Speed >= 0)
-        {
-            GPIO_SetBits(GPIOB, GPIO_Pin_12);
-            GPIO_ResetBits(GPIOB, GPIO_Pin_13);
-            PWM_SetCompare1(Speed);
-        }
-        else
-        {
-            GPIO_ResetBits(GPIOB, GPIO_Pin_12);
-            GPIO_SetBits(GPIOB, GPIO_Pin_13);
-            PWM_SetCompare1(-Speed);
-        }
+	if (n == 1)
+	{
+		if (PWM >= 0)
+		{
+			GPIO_SetBits(GPIOB, GPIO_Pin_12);
+			GPIO_ResetBits(GPIOB, GPIO_Pin_13);
+			PWM_SetCompare1(PWM);
+		}
+		else
+		{
+			GPIO_ResetBits(GPIOB, GPIO_Pin_12);
+			GPIO_SetBits(GPIOB, GPIO_Pin_13);
+			PWM_SetCompare1(-PWM);
+		}
 	}
-
 	else if (n == 2)
 	{
-		if (Speed >= 0)
+		if (PWM >= 0)
 		{
 			GPIO_ResetBits(GPIOB, GPIO_Pin_14);
 			GPIO_SetBits(GPIOB, GPIO_Pin_15);
-			PWM_SetCompare2(Speed);
+			PWM_SetCompare2(PWM);
 		}
 		else
 		{
 			GPIO_SetBits(GPIOB, GPIO_Pin_14);
 			GPIO_ResetBits(GPIOB, GPIO_Pin_15);
-			PWM_SetCompare2(-Speed);
+			PWM_SetCompare2(-PWM);
 		}
 	}
-    
 }

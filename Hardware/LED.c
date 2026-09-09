@@ -13,17 +13,17 @@ void LED_Init(void)
 	GPIO_SetBits(GPIOC, GPIO_Pin_13);
 }
 
-void LED1_ON(void)
+void LED_ON(void)
 {
 	GPIO_ResetBits(GPIOC, GPIO_Pin_13);
 }
 
-void LED1_OFF(void)
+void LED_OFF(void)
 {
 	GPIO_SetBits(GPIOC, GPIO_Pin_13);
 }
 
-void LED1_Turn(void)
+void LED_Turn(void)
 {
 	if (GPIO_ReadOutputDataBit(GPIOC, GPIO_Pin_13) == 0)
 	{
@@ -34,4 +34,3 @@ void LED1_Turn(void)
 		GPIO_ResetBits(GPIOC, GPIO_Pin_13);
 	}
 }
-

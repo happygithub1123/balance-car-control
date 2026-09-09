@@ -87,7 +87,6 @@ void BlueSerial_SendNumber(uint32_t Number, uint8_t Length)
 	}
 }
 
-
 void BlueSerial_Printf(char *format, ...)
 {
 	char String[100];
@@ -96,21 +95,6 @@ void BlueSerial_Printf(char *format, ...)
 	vsprintf(String, format, arg);
 	va_end(arg);
 	BlueSerial_SendString(String);
-}
-
-uint8_t BlueSerial_GetRxFlag(void)
-{
-	if (BlueSerial_RxFlag == 1)
-	{
-		BlueSerial_RxFlag = 0;
-		return 1;
-	}
-	return 0;
-}
-
-uint8_t BlueSerial_GetRxData(void)
-{
-	return BlueSerial_RxPacket[0];
 }
 
 void USART2_IRQHandler(void)

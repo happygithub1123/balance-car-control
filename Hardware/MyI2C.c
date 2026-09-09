@@ -3,19 +3,21 @@
 
 void MyI2C_W_SCL(uint8_t BitValue)
 {
-	GPIO_WriteBit(GPIOB, GPIO_Pin_10, (BitAction)BitValue);	
+	GPIO_WriteBit(GPIOB, GPIO_Pin_10, (BitAction)BitValue);
+//	Delay_us(10);
 }
+
 void MyI2C_W_SDA(uint8_t BitValue)
 {
 	GPIO_WriteBit(GPIOB, GPIO_Pin_11, (BitAction)BitValue);
-
+//	Delay_us(10);
 }
 
 uint8_t MyI2C_R_SDA(void)
 {
 	uint8_t BitValue;
 	BitValue = GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_11);
-
+//	Delay_us(10);
 	return BitValue;
 }
 

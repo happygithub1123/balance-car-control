@@ -21,7 +21,7 @@ void PWM_Init(void)
 	TIM_TimeBaseInitStructure.TIM_RepetitionCounter = 0;
 	TIM_TimeBaseInit(TIM2, &TIM_TimeBaseInitStructure);
 	
-	TIM_OCInitTypeDef TIM_OCInitStructure; 
+	TIM_OCInitTypeDef TIM_OCInitStructure;
 	TIM_OCStructInit(&TIM_OCInitStructure);
 	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
 	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
@@ -29,7 +29,6 @@ void PWM_Init(void)
 	TIM_OCInitStructure.TIM_Pulse = 0;		//CCR
 	TIM_OC1Init(TIM2, &TIM_OCInitStructure);
 	TIM_OC2Init(TIM2, &TIM_OCInitStructure);
-
 	
 	TIM_Cmd(TIM2, ENABLE);
 }
